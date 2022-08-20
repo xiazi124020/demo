@@ -12,7 +12,6 @@ import {
 import About from './About'
 import Home from './Home'
 import Users from './Users'
-import NestedEditableDemo from './NestTable'
 
 function App() {
 

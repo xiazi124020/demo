@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect } from 'react';
 import { makeStyles } from '@material-ui/core/styles';
 import Grid from '@material-ui/core/Grid';
@@ -11,6 +9,10 @@ import Link from '@material-ui/core/Link';
 import InsertDriveFileOutlinedIcon from '@material-ui/icons/InsertDriveFileOutlined';
 import FolderOpenOutlinedIcon from '@material-ui/icons/FolderOpenOutlined';
 import HomeIcon from '@material-ui/icons/Home';
+import _ from 'lodash';
+import FileDialog from './FileDialog';
+import moment from 'moment'
+import {datas, numberWithCommas} from './Constants'
 
 const useStyles = makeStyles((theme) => ({  
     root: {
@@ -19,6 +21,12 @@ const useStyles = makeStyles((theme) => ({
          fontWeight: 'bold'
        },
      },
+     button: {
+        '& > *': {
+          margin: theme.spacing(3),
+          fontWeight: 'bold'
+        },
+      },
      modal: {
        display: 'flex',
        alignItems: 'center',
@@ -32,222 +40,217 @@ const useStyles = makeStyles((theme) => ({
      },
    }));
 
-const datas = [
-	{
-		id: 1,
-        name: "fd001",
-		file_kbn: 1,
-        last_modify: "",
-        size: 0,
-		datas:
-		[
-			{
-                id: 2,
-                name: 'f001',
-				file_kbn: 0,
-                last_modify: "2020/01/02 12:12:10",
-				size: 500,
-				datas:[]
-			},
-			{
-                id: 3,
-                name: 'f002',
-				file_kbn: 0,
-                last_modify: "2020/01/02 12:12:10",
-				size: 500,
-				datas:[]
-			},
-			{
-                id: 4,
-                name: 'f003',
-				file_kbn: 0,
-                last_modify: "2020/01/02 12:12:10",
-				size: 500,
-				datas:[]
-			},
-			{
-                id: 5,
-                name: 'f004',
-				file_kbn: 1,
-                last_modify: "",
-				size: 0,
-				datas:
-				[
-					{
-                        id: 6,
-                        name: 'f005',
-                        file_kbn: 0,
-                        last_modify: "2020/01/02 12:12:10",
-                        size: 500,
-                        datas:[]
-					},
-					{
-                        id: 7,
-                        name: 'f006',
-                        file_kbn: 0,
-                        last_modify: "2020/01/02 12:12:10",
-                        size: 500,
-                        datas:[]
-					},
-				]
-			},
-		],
-	},
-	{
-        id: 8,
-        name: 'fd002',
-        file_kbn: 1,
-        last_modify: "",
-        size: 0,
-        datas:
-		[
-			{
-                id: 9,
-                name: 'f007',
-				file_kbn: 0,
-                last_modify: "2020/01/02 12:12:10",
-				size: 500,
-				datas:[]
-			},
-			{
-                id: 10,
-                name: 'f008',
-				file_kbn: 0,
-                last_modify: "2020/01/02 12:12:10",
-				size: 500,
-				datas:[]
-			},
-			{
-                id: 11,
-                name: 'f009',
-				file_kbn: 0,
-                last_modify: "2020/01/02 12:12:10",
-				size: 500,
-				datas:[]
-			},
-		]
-	},
-	{
-        id: 11,
-        name: 'f003',
-        file_kbn: 0,
-        last_modify: "2020/01/02 12:12:10",
-        size: 500,
-        datas:[]
-	},
-]
-
 export default function Home() {
     const classes = useStyles();    
-    const [currentFiles, setCurrentFiles] = useState(datas);
+    const [currentFiles, setCurrentFiles] = useState([]);
     const [directory, setDirectory] = useState([])
+    const [searchKey, setSearchKey] = useState();
+    const [open, setOpen] = useState(false);
+    const [kbn, setKbn] = useState();
+  
+    const handleClickOpen = (value) => {
+      setOpen(true);
+      setKbn(value)
+    };
+  
+    const handleClose = () => {
+      setOpen(false);
+    };
+  
     let timer = 0;
     let delay = 200;
     let prevent = false;
 
+    useEffect(() => {
+        let store_files = localStorage.getItem("datas");
+        if(store_files === null) {
+            localStorage.setItem("datas", JSON.stringify(datas));
+            setCurrentFiles(datas)
+        } else {
+            setCurrentFiles(JSON.parse(store_files))
+        }
+      }, []);
+
     const onSingleClickHandler = (select_datas, idx) => {
       timer = setTimeout(() => {
         if (!prevent) {
-            setDirectory([...directory, select_datas.name])
+            // setDirectory([...directory, select_datas.name])
         }
       }, delay);
     };
-    const onDoubleClickHandler = (select_datas, idx) => {
+
+    const onDoubleClickHandler = (select_datas) => {
       clearTimeout(timer);
       prevent = true;
+      let temp_obj = {};
+      temp_obj.id = select_datas.id
+      temp_obj.name = select_datas.name
       setCurrentFiles(select_datas.datas)
-      setDirectory([...directory, select_datas.name])
+      setDirectory([...directory, temp_obj])
     };
 
     const back2home = () => {
         setCurrentFiles(datas)
+        setDirectory([])
     }
 
-    const handleClick = (event) => {
-        console.info('You clicked a breadcrumb.');
+    const find_child = (target, data, kbn) => {
+        let ret_obj;
+        _.forEach(target, function(temp) {
+            if(temp.id === data.id) {
+                if(kbn === 1) {
+                    ret_obj = temp 
+                } else {
+                    ret_obj = temp.datas
+                }
+                return false
+            } else {
+                if(temp.datas.length > 0) {
+                    find_child(temp.datas, data, kbn);
+                }
+                
+            }
+        });
+        return ret_obj
     }
 
+    const handleClick = (data) => {
+        let temp_files = find_child(data)
+        setCurrentFiles(temp_files);
+        let idx = _.findIndex(datas, function(o) { return o.id === data.id; });
+        setDirectory([...directory.slice(0, idx -1 )])
+    }
+
+    let ret_obj = [];
+    const search_files = (target, key_word) => {
+        if(key_word === "") {
+            // setDirectory([])
+            if(directory.length > 0) {
+                return find_child(directory[directory.length - 1])
+            } else {
+                return datas
+            }
+        }
+        _.forEach(target, function(temp) {
+            if(_.includes(temp.name, key_word)) {
+                ret_obj.push(temp)
+                if(temp.datas.length !== 0) {
+                    search_files(temp.datas, key_word)
+                }
+            }
+        });
+        return ret_obj
+    }
+
+    const handleChange = (event) => {
+        setSearchKey(event.target.value);
+        let temp_files = []
+        if(directory.length > 0) {
+            temp_files = find_child(datas, directory[directory.length - 1], 1)
+        } else {
+            temp_files = datas
+        }
+
+        setCurrentFiles(search_files(temp_files, event.target.value)) 
+    };
+
+    const addFile = (temp_contents ,temp_name) => {
+        const data = {
+            id: Math.floor(Math.random() * 10000),
+            name: temp_name,
+            file_kbn: kbn,
+            last_modify: kbn === 1 ? "" : moment(new Date()).format('YYYY/MM/DD HH:mm:ss'),
+            size: kbn === 1 ? "": Buffer.byteLength(temp_contents, "utf-8"),
+            contents: temp_contents,
+            datas:[]
+        }
+        setCurrentFiles([...currentFiles, data])
+        let idx = _.findIndex(datas, function(o) { return o.id === data.id; });
+        handleClose()
+    }
+    
     return(
         <>
             <div className={classes.paper}>
-            <Grid container spacing={3}>
-                <Grid item xs={12}>
-                    <TextField id="outlined-basic" label="" variant="outlined" placeholder="search..." style={{width: '100%'}}/>
-                </Grid>
-                <Grid item xs={12} className={classes.root}>
-                    <Button variant="outlined">Create new file</Button>
-                    <Button variant="outlined" style={{marginLeft: 3}}>Create new Folder</Button>
-                </Grid>
-                <Grid item xs={12} className={classes.root}>
-                    <Breadcrumbs aria-label="breadcrumb" style={{fontSize: 30}}>
-                    <Link color="inherit" onClick={back2home} style={{fontSize: 30}}>
-                        <HomeIcon />
-                    </Link>
-                    {directory.map((data, idx) => (
-                        idx == directory.length ?
-                        <Link color="inherit" href="/" onClick={handleClick} style={{fontSize: 30}}>
-                            {data}
-                        </Link>:
-                        <Typography color="textPrimary" style={{fontSize: 30}}>{data}</Typography>
-                    ))}
-                    </Breadcrumbs>
-                </Grid>
-                <Grid item xs={4} className={classes.root}>
-                    <Typography variant="h3">
-                        File
-                    </Typography>
-                </Grid>
-                <Grid item xs={4} className={classes.root}>
-                    <Typography variant="h3">
-                        Size
-                    </Typography>
-                </Grid>
-                <Grid item xs={4} className={classes.root}>
-                    <Typography variant="h3">
-                        Last modify
-                    </Typography>
-                </Grid>
-                {currentFiles.map((data, idx) => (
-                    <>
-                    {
-                        data.file_kbn == 1 ? <>
-                            <Grid item xs={4} onClick={() => {onSingleClickHandler(data, idx)}} onDoubleClick={() => {onDoubleClickHandler(data, idx)}}>
-                                <Typography variant="h6">
-                                    <FolderOpenOutlinedIcon style={{fontSize: 50, border: 1, backgroundColor: ''}}/><br />{data.name}
-                                </Typography>
-                            </Grid>
-                            <Grid item xs={4} >
-                                <Typography variant="h6">
-                                    {data.size === 0 ? "": data.size}
-                                </Typography>
-                            </Grid>
-                            <Grid item xs={4} >
-                                <Typography variant="h6">
-                                    {data.last_modify}
-                                </Typography>
-                            </Grid></>: <><Grid item xs={4} >
-                                <Typography variant="h6">
-                                    <InsertDriveFileOutlinedIcon style={{fontSize: 50, border: 1, backgroundColor: ''}}/><br />{data.name}
-                                </Typography>
-                            </Grid>
-                            <Grid item xs={4} >
-                                <Typography variant="h6">
-                                {data.size === 0 ? "": data.size}
-                                </Typography>
-                            </Grid>
-                            <Grid item xs={4}>
-                                <Typography variant="h6">
-                                    {data.last_modify}
-                                </Typography>
-                            </Grid></>
-                    }
-                    <Grid item xs={12} className={classes.root}>
-                        <hr height="1" />
+                <Grid container spacing={3}>
+                    <Grid item xs={12}>
+                        <TextField id="outlined-basic" label="" value={searchKey} onChange={handleChange} variant="outlined" placeholder="search..." style={{width: '100%'}}/>
                     </Grid>
-                    </>
-                ))}
-            </Grid>
+                    <Grid item xs={12} className={classes.root} >
+                        <Button variant="outlined" onClick={() => {handleClickOpen(0)}}>Create new file</Button>
+                        <Button style={{marginLeft: 10}} variant="outlined" onClick={() => {handleClickOpen(1)}}>Create new Folder</Button>
+                    </Grid>
+                    <Grid item xs={12} className={classes.root}>
+                        <Breadcrumbs aria-label="breadcrumb" style={{fontSize: 30}}>
+                        <Link color="inherit" onClick={back2home} style={{fontSize: 30}}>
+                            <HomeIcon />
+                        </Link>
+                        {directory.map((data, idx) => (
+                            idx !== directory.length - 1 ?
+                            <Link color="inherit" onClick={() => {handleClick(data);}} style={{fontSize: 30}}>
+                                {data.name}
+                            </Link>:
+                            <Typography color="textPrimary" style={{fontSize: 30}}>{data.name}</Typography>
+                        ))}
+                        </Breadcrumbs>
+                    </Grid>
+                    <Grid item xs={4} className={classes.root}>
+                        <Typography variant="h3">
+                            File
+                        </Typography>
+                    </Grid>
+                    <Grid item xs={4} className={classes.root}>
+                        <Typography variant="h3">
+                            Size(byte)
+                        </Typography>
+                    </Grid>
+                    <Grid item xs={4} className={classes.root}>
+                        <Typography variant="h3">
+                            Last modify
+                        </Typography>
+                    </Grid>
+                    {currentFiles.map((data, idx) => (
+                        <>
+                        {
+                            data.file_kbn === 1 ? <>
+                                <Grid item xs={4} onClick={() => {onSingleClickHandler(data, idx)}} onDoubleClick={() => {onDoubleClickHandler(data)}}>
+                                    <Typography variant="h6">
+                                        <FolderOpenOutlinedIcon style={{fontSize: 50, border: 1, backgroundColor: ''}}/><br />{data.name}
+                                    </Typography>
+                                </Grid>
+                                <Grid item xs={4} >
+                                    <Typography variant="h6">
+                                        {data.size === 0 ? "": numberWithCommas(data.size + "")}
+                                    </Typography>
+                                </Grid>
+                                <Grid item xs={4} >
+                                    <Typography variant="h6">
+                                        {data.last_modify}
+                                    </Typography>
+                                </Grid></>: <><Grid item xs={4} >
+                                    <Typography variant="h6">
+                                        <InsertDriveFileOutlinedIcon style={{fontSize: 50, border: 1, backgroundColor: ''}}/><br />{data.name}
+                                    </Typography>
+                                </Grid>
+                                <Grid item xs={4} >
+                                    <Typography variant="h6">
+                                    {data.size === 0 ? "": numberWithCommas(data.size + "")}
+                                    </Typography>
+                                </Grid>
+                                <Grid item xs={4}>
+                                    <Typography variant="h6">
+                                        {data.last_modify}
+                                    </Typography>
+                                </Grid></>
+                        }
+                        <Grid item xs={12} className={classes.root}>
+                            <hr height="1" />
+                        </Grid>
+                        </>
+                    ))}
+                </Grid>
             </div>
+            <FileDialog handleClickOpen={handleClickOpen} handleClose={handleClose} open={open} kbn={kbn} addFile={addFile} />
         </>
     )
 } 
