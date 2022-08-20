@@ -66,8 +66,10 @@ export default function Home() {
         if(store_files === null) {
             localStorage.setItem("datas", JSON.stringify(datas));
             setCurrentFiles(datas)
+            sessionStorage.setItem("currentFile", JSON.stringify(datas))
         } else {
             setCurrentFiles(JSON.parse(store_files))
+            sessionStorage.setItem("currentFile", store_files)
         }
       }, []);
 
@@ -87,11 +89,13 @@ export default function Home() {
       temp_obj.name = select_datas.name
       setCurrentFiles(select_datas.datas)
       setDirectory([...directory, temp_obj])
+      sessionStorage.setItem("currentFile", JSON.stringify(select_datas.datas))
     };
 
     const back2home = () => {
         setCurrentFiles(datas)
         setDirectory([])
+        sessionStorage.setItem("currentFile", JSON.stringify(datas))
     }
 
     const find_child = (target, data, kbn) => {
@@ -117,20 +121,13 @@ export default function Home() {
     const handleClick = (data) => {
         let temp_files = find_child(data)
         setCurrentFiles(temp_files);
+        sessionStorage.setItem("currentFile", JSON.stringify(temp_files))
         let idx = _.findIndex(datas, function(o) { return o.id === data.id; });
         setDirectory([...directory.slice(0, idx -1 )])
     }
 
     let ret_obj = [];
     const search_files = (target, key_word) => {
-        if(key_word === "") {
-            // setDirectory([])
-            if(directory.length > 0) {
-                return find_child(directory[directory.length - 1])
-            } else {
-                return datas
-            }
-        }
         _.forEach(target, function(temp) {
             if(_.includes(temp.name, key_word)) {
                 ret_obj.push(temp)
@@ -144,14 +141,12 @@ export default function Home() {
 
     const handleChange = (event) => {
         setSearchKey(event.target.value);
-        let temp_files = []
-        if(directory.length > 0) {
-            temp_files = find_child(datas, directory[directory.length - 1], 1)
+        let search_target = JSON.parse(sessionStorage.getItem("currentFile"))
+        if(event.target.value === "") {
+            setCurrentFiles(search_target) 
         } else {
-            temp_files = datas
+            setCurrentFiles(search_files(search_target, event.target.value)) 
         }
-
-        setCurrentFiles(search_files(temp_files, event.target.value)) 
     };
 
     const addFile = (temp_contents ,temp_name) => {
